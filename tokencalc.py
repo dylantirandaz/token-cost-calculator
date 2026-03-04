@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
-"""
-Token Cost Calculator for Anthropic Claude API.
-
-Interactive CLI tool that:
-- Calculates cost from token counts (input/output)
-- Estimates tokens from pasted text
-- Tracks cumulative session usage and cost
-"""
+"""tokencalc - claude token cost calculator"""
 
 import sys
 import json
 import os
 from datetime import datetime
 
-# ── Claude Model Pricing (per million tokens) ──────────────────────────────
-
+# pricing per 1M tokens
 MODELS = {
     "opus-4": {
         "name": "Claude Opus 4",
@@ -45,10 +37,7 @@ MODELS = {
 
 DEFAULT_MODEL = "sonnet-4"
 
-# Rough estimate: ~4 chars per token for English text (Claude uses a BPE tokenizer)
 CHARS_PER_TOKEN = 4
-
-# ── Session Tracker ─────────────────────────────────────────────────────────
 
 HISTORY_FILE = os.path.expanduser("~/.tokencalc_history.json")
 
@@ -103,8 +92,6 @@ class Session:
         with open(HISTORY_FILE, "w") as f:
             json.dump(history, f, indent=2)
 
-
-# ── Formatting helpers ──────────────────────────────────────────────────────
 
 BOLD = "\033[1m"
 DIM = "\033[2m"
@@ -302,7 +289,6 @@ def cmd_model(args: list[str], session: Session):
             session.model = key
             print(f"  Switched to {BOLD}{MODELS[key]['name']}{RESET}")
             return
-        # Try fuzzy match
         for k, m in MODELS.items():
             if key in k or key in m["name"].lower():
                 session.model = k
@@ -315,9 +301,7 @@ def cmd_model(args: list[str], session: Session):
         print(f"    {key:<16} {MODELS[key]['name']}{marker}")
 
 
-# ── Main ────────────────────────────────────────────────────────────────────
-
-# Quick mode: tokencalc <input> <output> [model]
+# quick mode
 if len(sys.argv) >= 3:
     session = Session()
     if len(sys.argv) >= 4 and sys.argv[3] in MODELS:
@@ -338,7 +322,6 @@ if len(sys.argv) >= 3:
     print_result(inp, out, cost, input_cost, output_cost)
     sys.exit(0)
 
-# Interactive mode
 session = Session()
 print_banner()
 print(f"  Model: {BOLD}{MODELS[session.model]['name']}{RESET}")
@@ -385,7 +368,6 @@ try:
         elif cmd == "help":
             print_help()
         else:
-            # Try to parse as "calc" shorthand: just two numbers
             if len(parts) == 2:
                 try:
                     int(parts[0].replace(",", "").replace("k", "000").replace("K", "000"))
