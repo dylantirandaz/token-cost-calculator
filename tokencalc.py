@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """tokencalc - claude token cost calculator"""
 
 import sys
