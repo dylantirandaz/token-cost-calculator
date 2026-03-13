@@ -6,10 +6,10 @@ from .formatting import (
     BOLD, CYAN, DIM, GREEN, MAGENTA, RED, RESET, YELLOW,
     fmt_cost, fmt_tokens, parse_token_str,
 )
-from .models import MODELS, DEFAULT_MODEL, calc_cost, estimate_tokens, resolve_model
+from .models import MODELS, DEFAULT_MODEL, calc_cost_simple, estimate_tokens, resolve_model
 from .session import Session, load_history, clear_history
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 def print_banner():
@@ -58,6 +58,9 @@ def print_help():
   {CYAN}estimate{RESET}                Estimate tokens from pasted text
   {CYAN}compare{RESET} [in] [out]      Compare cost across all models
   {CYAN}budget{RESET} <amount>          How many tokens fit in a dollar budget
+  {CYAN}cc{RESET}                      Show latest Claude Code session cost
+  {CYAN}cc list{RESET}                 List recent Claude Code sessions
+  {CYAN}cc all{RESET}                  All-time Claude Code usage totals
   {CYAN}model{RESET} [name]            Switch model (e.g. model opus-4)
   {CYAN}pricing{RESET}                 Show pricing table
   {CYAN}session{RESET}                 Show session totals
@@ -182,7 +185,7 @@ def cmd_compare(args: list[str]):
 
     results = []
     for key, m in MODELS.items():
-        cost, ic, oc = calc_cost(inp, out, key)
+        cost, ic, oc = calc_cost_simple(inp, out, key)
         results.append((key, m["name"], ic, oc, cost))
 
     results.sort(key=lambda r: r[4])
@@ -253,13 +256,37 @@ def cmd_export(session: Session):
 
 def run_oneshot(argv: list[str]):
     """handle CLI args for non-interactive usage."""
+    from .claudecode import cmd_watch_latest, cmd_watch_list, cmd_watch_all
+
     if argv[0] == "--version":
         print(f"tokencalc {VERSION}")
         return
 
     if argv[0] == "--compare":
-        # tokencalc --compare 10000 2000
         cmd_compare(argv[1:])
+        return
+
+    if argv[0] == "cc":
+        # tokencalc cc          -> latest session
+        # tokencalc cc last N   -> last N sessions
+        # tokencalc cc list     -> list recent sessions
+        # tokencalc cc all      -> all-time totals
+        sub = argv[1] if len(argv) > 1 else "last"
+        if sub == "list":
+            n = int(argv[2]) if len(argv) > 2 else 10
+            cmd_watch_list(n)
+        elif sub == "all":
+            cmd_watch_all()
+        else:
+            # "last" or a number
+            if sub == "last":
+                n = int(argv[2]) if len(argv) > 2 else 1
+            else:
+                try:
+                    n = int(sub)
+                except ValueError:
+                    n = 1
+            cmd_watch_latest(n)
         return
 
     # tokencalc <input> <output> [model]
@@ -275,10 +302,11 @@ def run_oneshot(argv: list[str]):
     except (ValueError, IndexError):
         print(f"Usage: tokencalc <input_tokens> <output_tokens> [model]")
         print(f"       tokencalc --compare <input_tokens> <output_tokens>")
+        print(f"       tokencalc cc [last N | list | all]")
         print(f"       tokencalc  (interactive mode)")
         sys.exit(1)
 
-    cost, ic, oc = calc_cost(inp, out, model)
+    cost, ic, oc = calc_cost_simple(inp, out, model)
     print(f"  {MODELS[model]['name']}")
     print_result(inp, out, cost, ic, oc)
 
@@ -317,6 +345,27 @@ def repl():
                 cmd_compare(args)
             elif cmd in ("budget", "b"):
                 cmd_budget(args, session.model)
+            elif cmd == "cc":
+                from .claudecode import cmd_watch_latest, cmd_watch_list, cmd_watch_all
+                sub = args[0] if args else "last"
+                if sub == "list":
+                    n = int(args[1]) if len(args) > 1 else 10
+                    cmd_watch_list(n)
+                elif sub == "all":
+                    cmd_watch_all()
+                else:
+                    n = 1
+                    if sub != "last":
+                        try:
+                            n = int(sub)
+                        except ValueError:
+                            pass
+                    elif len(args) > 1:
+                        try:
+                            n = int(args[1])
+                        except ValueError:
+                            pass
+                    cmd_watch_latest(n)
             elif cmd in ("model", "m"):
                 cmd_model(args, session)
             elif cmd in ("pricing", "price", "p"):
@@ -368,6 +417,10 @@ def main():
         print("  tokencalc                            Interactive mode")
         print("  tokencalc <input> <output> [model]   Quick calculation")
         print("  tokencalc --compare <input> <output> Compare across models")
+        print("  tokencalc cc                         Latest Claude Code session cost")
+        print("  tokencalc cc last 5                  Last 5 sessions")
+        print("  tokencalc cc list                    List recent sessions")
+        print("  tokencalc cc all                     All-time usage totals")
         print("  tokencalc --version                  Show version")
     else:
         repl()

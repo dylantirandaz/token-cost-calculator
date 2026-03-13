@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime
 
-from .models import MODELS, calc_cost
+from .models import MODELS, calc_cost_simple
 
 HISTORY_FILE = os.path.expanduser("~/.tokencalc_history.json")
 
@@ -20,7 +20,7 @@ class Session:
         self.total_cost = 0.0
 
     def add(self, input_tokens: int, output_tokens: int, label: str = ""):
-        cost, input_cost, output_cost = calc_cost(input_tokens, output_tokens, self.model)
+        cost, input_cost, output_cost = calc_cost_simple(input_tokens, output_tokens, self.model)
 
         self.total_input_tokens += input_tokens
         self.total_output_tokens += output_tokens
