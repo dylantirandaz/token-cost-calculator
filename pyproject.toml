@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokencalc"
-version = "0.3.0"
+version = "0.3.1"
 description = "CLI tool and library for calculating Claude API token costs"
 readme = "README.md"
 license = "MIT"

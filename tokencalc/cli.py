@@ -9,7 +9,7 @@ from .formatting import (
 from .models import MODELS, DEFAULT_MODEL, calc_cost_simple, estimate_tokens, resolve_model
 from .session import Session, load_history, clear_history
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 
 def print_banner():
@@ -30,14 +30,20 @@ def print_result(input_tokens, output_tokens, cost, input_cost, output_cost, lab
 
 
 def print_session_summary(session: Session):
-    if not session.entries:
-        return
-    total_tokens = session.total_input_tokens + session.total_output_tokens
-    print(f"\n  {MAGENTA}{'-' * 42}{RESET}")
-    print(f"  {BOLD}{MAGENTA}Session{RESET}  {DIM}({len(session.entries)} call{'s' if len(session.entries) != 1 else ''} · {MODELS[session.model]['name']}){RESET}")
-    print(f"  {CYAN}Input:{RESET}  {fmt_tokens(session.total_input_tokens):>10}  tokens")
-    print(f"  {CYAN}Output:{RESET} {fmt_tokens(session.total_output_tokens):>10}  tokens")
-    print(f"  {BOLD}Total:{RESET}  {fmt_tokens(total_tokens):>10}  tokens  ->  {BOLD}{YELLOW}{fmt_cost(session.total_cost)}{RESET}")
+    from .claudecode import cmd_watch_latest
+
+    # show manual session totals if any
+    if session.entries:
+        total_tokens = session.total_input_tokens + session.total_output_tokens
+        print(f"\n  {MAGENTA}{'-' * 42}{RESET}")
+        print(f"  {BOLD}{MAGENTA}Manual Calcs{RESET}  {DIM}({len(session.entries)} call{'s' if len(session.entries) != 1 else ''} · {MODELS[session.model]['name']}){RESET}")
+        print(f"  {CYAN}Input:{RESET}  {fmt_tokens(session.total_input_tokens):>10}  tokens")
+        print(f"  {CYAN}Output:{RESET} {fmt_tokens(session.total_output_tokens):>10}  tokens")
+        print(f"  {BOLD}Total:{RESET}  {fmt_tokens(total_tokens):>10}  tokens  ->  {BOLD}{YELLOW}{fmt_cost(session.total_cost)}{RESET}")
+
+    # show current claude code session
+    print(f"\n  {BOLD}Current Claude Code Session:{RESET}\n")
+    cmd_watch_latest(1)
 
 
 def print_pricing_table(current_model: str):
@@ -74,23 +80,26 @@ def print_help():
 
 
 def print_history():
+    from .claudecode import cmd_watch_all, cmd_watch_list
+
+    # show manual calc history if any
     history = load_history()
-    if not history:
-        print(f"\n  {DIM}No history yet.{RESET}\n")
-        return
+    if history:
+        grand_total = 0.0
+        print(f"\n  {BOLD}Manual Calculations:{RESET}\n")
+        for s in history[-10:]:
+            ts = s.get("session_start", "?")[:16].replace("T", " ")
+            model_name = MODELS.get(s.get("model", ""), {}).get("name", s.get("model", "?"))
+            cost = s.get("total_cost", 0)
+            inp = s.get("total_input_tokens", 0)
+            out = s.get("total_output_tokens", 0)
+            grand_total += cost
+            print(f"  {DIM}{ts}{RESET}  {model_name:<24} {fmt_tokens(inp + out):>8} tok  {GREEN}{fmt_cost(cost)}{RESET}")
+        print(f"\n  {BOLD}Manual total: {YELLOW}{fmt_cost(grand_total)}{RESET}")
 
-    grand_total = 0.0
-    print(f"\n  {BOLD}Past Sessions:{RESET}\n")
-    for s in history[-10:]:
-        ts = s.get("session_start", "?")[:16].replace("T", " ")
-        model_name = MODELS.get(s.get("model", ""), {}).get("name", s.get("model", "?"))
-        cost = s.get("total_cost", 0)
-        inp = s.get("total_input_tokens", 0)
-        out = s.get("total_output_tokens", 0)
-        grand_total += cost
-        print(f"  {DIM}{ts}{RESET}  {model_name:<24} {fmt_tokens(inp + out):>8} tok  {GREEN}{fmt_cost(cost)}{RESET}")
-
-    print(f"\n  {BOLD}Grand total: {YELLOW}{fmt_cost(grand_total)}{RESET}\n")
+    # always show claude code history
+    print(f"\n  {BOLD}Claude Code Sessions:{RESET}")
+    cmd_watch_list(10)
 
 
 def cmd_calc(args: list[str], session: Session):
@@ -372,8 +381,6 @@ def repl():
                 print_pricing_table(session.model)
             elif cmd in ("session", "s"):
                 print_session_summary(session)
-                if not session.entries:
-                    print(f"  {DIM}No calls tracked yet.{RESET}\n")
             elif cmd in ("export",):
                 cmd_export(session)
             elif cmd in ("history", "hist"):
