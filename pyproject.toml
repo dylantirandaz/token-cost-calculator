@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tokencalc"
+version = "0.2.0"
+description = "CLI tool and library for calculating Claude API token costs"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Dylan Tirandaz", email = "dylantirandaz@yahoo.com" },
+]
+keywords = ["claude", "anthropic", "tokens", "cost", "calculator", "llm", "api"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/dylantirandaz/token-cost-calculator"
+Repository = "https://github.com/dylantirandaz/token-cost-calculator"
+Issues = "https://github.com/dylantirandaz/token-cost-calculator/issues"
+
+[project.scripts]
+tokencalc = "tokencalc.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tokencalc*"]
